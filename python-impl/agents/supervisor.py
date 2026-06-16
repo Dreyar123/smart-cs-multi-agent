@@ -83,6 +83,9 @@ class SupervisorNode:
             )),
         ]
 
+        print("--- 准备发给大模型的 messages 原始数据 ---")
+        print(routing_prompt)
+
         response = await self.llm.ainvoke(routing_prompt)
         intent = response.content.strip().lower()
 
@@ -113,8 +116,16 @@ class SupervisorNode:
             result_parts = []
             for agent_name, result in sub_results.items():
                 if result:
-                    result_parts.append(result)
+                    # 🚨 修改这里：如果是字典，提取里面的文本字段（假设键名叫 'content'）
+                    if isinstance(result, dict):
+                        result_parts = [str(res) for res in sub_results.values() if res]
+                    else:
+                        text_content = str(result)
+
+                    if text_content:  # 确保提取出的文本不为空
+                        result_parts.append(text_content)
             final_response = "\n\n".join(result_parts) if result_parts else "抱歉，暂时无法处理您的请求，请稍后重试。"
+            # final_response = result_parts if result_parts else "抱歉，暂时无法处理您的请求，请稍后重试。"
 
         return {
             **state,
@@ -164,7 +175,7 @@ def create_supervisor_graph(
         enable_checkpointing: 是否启用检查点（支持断点恢复）
     """
     if llm is None:
-        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        llm = ChatOpenAI(model="qwen-plus", temperature=0)
     if working_memory is None:
         working_memory = WorkingMemory()
 
